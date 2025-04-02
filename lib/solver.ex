@@ -1,16 +1,6 @@
 defmodule Solver do
   require Explorer.DataFrame
 
-  defp encode_result(result) do
-    result
-    |> Enum.map(fn
-      :green -> "g"
-      :yellow -> "y"
-      :grey -> "b"
-    end)
-    |> Enum.join("")
-  end
-
   def init(file_path, output_path) do
     words = CsvLoader.load_file(file_path) |> Enum.map(fn row -> row["word"] end)
 
@@ -23,7 +13,9 @@ defmodule Solver do
         %{
           guess: guess,
           word: word,
-          result: Wordle.analyse_only_color(%{guess: guess, word: word}) |> encode_result()
+          result:
+            Wordle.analyse(%{guess: guess, word: word}, true)
+            |> Wordle.encode_result()
         }
       end
 

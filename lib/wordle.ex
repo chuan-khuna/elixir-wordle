@@ -8,7 +8,7 @@ defmodule Wordle do
   # yellow = right letter, wrong position
   # grey = not in word
 
-  defp decrease_freq_for_green(result, freq) do
+  defp init_letter_frequency(result, freq) do
     Enum.reduce(result, freq, fn {letter, _idx, color}, acc ->
       case color do
         :green -> Map.update!(acc, letter, fn x -> x - 1 end)
@@ -41,19 +41,19 @@ defmodule Wordle do
     # by subtracting the used letters that are `green`
     word_freq = word |> String.graphemes() |> Enum.frequencies()
 
-    remaining_freq = decrease_freq_for_green(result, word_freq)
+    # decrese the frequency of the letters that are green
+    remaining_freq = init_letter_frequency(result, word_freq)
 
     {result, remaining_freq}
   end
 
-  defp update_yellow_result(result, letter, idx, color) do
-    new_result = [{letter, idx, :yellow} | result] -- [{letter, idx, color}]
-
-    # sort the result by index
-    new_result =
-      Enum.sort_by(new_result, fn {_letter, idx, _color} -> idx end)
-
-    new_result
+  defp update_result(result, letter, idx) do
+    # update the result at the index to yellow
+    result
+    |> Enum.map(fn
+      {^letter, ^idx, _} -> {letter, idx, :yellow}
+      other -> other
+    end)
   end
 
   def check_yellow(result, remaining_freq) do
@@ -81,7 +81,7 @@ defmodule Wordle do
                 # otherwise, it can be yellow
                 # update the result and decrease the frequency
                 {
-                  update_yellow_result(old_res, letter, idx, color),
+                  update_result(old_res, letter, idx),
                   Map.update!(old_freq, letter, fn x -> x - 1 end)
                 }
             end
@@ -89,19 +89,17 @@ defmodule Wordle do
     end)
   end
 
-  def analyse(%{guess: guess, word: word}) do
+  def analyse(%{guess: guess, word: word}, return_only_color \\ false) do
     {result, freq} = check_green(guess, word)
     {result, _freq} = check_yellow(result, freq)
-    result
+
+    case return_only_color do
+      true -> Enum.map(result, fn r -> r |> Tuple.to_list() |> Enum.at(2) end)
+      false -> result
+    end
   end
 
-  def analyse_only_color(%{guess: guess, word: word}) do
-    result = analyse(%{guess: guess, word: word})
-
-    Enum.map(result, fn r -> r |> Tuple.to_list() |> Enum.at(2) end)
-  end
-
-  def encode_result(result, mode) do
+  def encode_result(result, mode \\ :letter) do
     case mode do
       :tile ->
         result
@@ -120,6 +118,28 @@ defmodule Wordle do
           :grey -> "b"
         end)
         |> Enum.join("")
+    end
+  end
+
+  def decode_result(result, mode \\ :letter) do
+    case mode do
+      :tile ->
+        result
+        |> String.graphemes()
+        |> Enum.map(fn
+          "🟩" -> :green
+          "🟨" -> :yellow
+          "⬛" -> :grey
+        end)
+
+      _ ->
+        result
+        |> String.graphemes()
+        |> Enum.map(fn
+          "g" -> :green
+          "y" -> :yellow
+          "b" -> :grey
+        end)
     end
   end
 end
