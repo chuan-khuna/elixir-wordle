@@ -2,7 +2,12 @@ defmodule Solver do
   require Explorer.DataFrame
 
   def init(file_path, output_path) do
-    words = CsvLoader.load_file(file_path) |> Enum.map(fn row -> row["word"] end)
+    words =
+      file_path
+      |> File.stream!()
+      |> CSV.decode!(headers: true)
+      |> Enum.map(fn row -> row end)
+      |> Enum.map(fn row -> row["word"] end)
 
     # for each word in words, calculate wordle result matrix
 
